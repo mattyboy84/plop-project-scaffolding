@@ -1,0 +1,1 @@
+slug: {{project_slug}}

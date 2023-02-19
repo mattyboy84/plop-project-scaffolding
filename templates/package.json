@@ -1,0 +1,28 @@
+{
+
+    "name": "{{project_slug}}",
+    "description": "To make it easy for you to get started with GitLab, here's a list of recommended next steps.",
+    "version": "1.0.0",
+    "main": "index.js",
+    "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 1",
+      "plop": "plop"
+    },
+    "dependencies": {
+      "fs": "^0.0.1-security",
+      "path": "^0.12.7"
+    },
+    "repository": {
+      "type": "git",
+      "url": "git+ssh://git@gitlab.com/{{project_slug}}.git"
+    },
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+      "eslint": "^8.34.0",
+      "eslint-config-airbnb-base": "^15.0.0",
+      "eslint-plugin-import": "^2.27.5",
+      "plop": "^3.1.2"
+    }
+}
+  

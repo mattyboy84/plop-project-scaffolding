@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  TargetEnvironment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+  projectSlug:
+    Type: String
+    Default: {{project_slug}}
+  bucket:
+    Type: String
+    Default: bucket123
+
+Globals:
+  Function:
+    CodeUri: ./
+    Runtime: nodejs14.x
+    MemorySize: 3008
+    Timeout: 900
+
+Conditions:
+  prodEnvironment: !Equals
+    - !Ref TargetEnvironment
+    - prod
+  
+Resources:
+  lambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${TargetEnvironment}-${projectSlug}-lambdaRole"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - events.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: !Sub "${TargetEnvironment}-${projectSlug}-role-policy"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: "s3:*"
+                Resource: !Sub "arn:aws:s3:::${bucket}"
+              - Effect: Allow
+                Action:
+                  - "events:PutTargets"
+                  - "events:DescribeRule"
+                  - "events:PutRule"
+                Resource: "*"
+              - Effect: Allow
+                Action: "lambda:InvokeFunction"
+                Resource: "*"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+  

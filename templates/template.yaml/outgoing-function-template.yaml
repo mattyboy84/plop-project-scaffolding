@@ -1,0 +1,56 @@
+  {{function_name}}:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${TargetEnvironment}-${projectSlug}-{{function_name}}"
+      Role: !GetAtt lambdaRole.Arn
+      Handler: src/outgoing/{{function_name}}.{{function_name}}
+      VpcConfig:
+  
+  {{function_name}}LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join ['', ['/aws/lambda/', !Select [6, !Split [':', !GetAtt {{function_name}}.Arn]]]]
+      RetentionInDays: 90
+    #DeletionPolicy: Retain
+
+  #{{function_name}}LogGroupFilter:
+  #  Type: AWS::Logs::SubscriptionFilter
+  #  Condition: prodEnvironment
+  #  Properties:
+  #    LogGroupName: !Join ['', [/aws/lambda/, !Select [6, !Split [':', !GetAtt {{function_name}}.Arn]]]]
+  #    FilterPattern: "?ERROR"
+  #    DestinationArn: ""
+  
+  {{function_name}}EBRule:
+    Type: "AWS::Events::Rule"
+    Condition: prodEnvironment
+    Properties:
+      Name: !Sub "${TargetEnvironment}-${projectSlug}-{{function_name}}-EBRule"
+      RoleArn: !GetAtt lambdaRole.Arn
+      State: ENABLED
+      EventPattern:
+        source:
+          - "aws.s3"
+        detail-type:
+          - "Object Created"
+        detail:
+          bucket:
+            name:
+            -  !Ref bucket
+          object:
+            size:
+              - exists: false
+              - anything-but: 0
+      Targets:
+        - Arn: !GetAtt {{function_name}}.Arn
+          Id: !Sub "${projectSlug}-{{function_name}}-Id"
+  
+  {{function_name}}EBPermission:
+    Type: AWS::Lambda::Permission
+    Condition: prodEnvironment
+    Properties:
+      FunctionName: !GetAtt {{function_name}}.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt {{function_name}}EBRule.Arn
+  

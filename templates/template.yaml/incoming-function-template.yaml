@@ -1,0 +1,44 @@
+  {{function_name}}:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${TargetEnvironment}-${projectSlug}-{{function_name}}"
+      Role: !GetAtt lambdaRole.Arn
+      Handler: src/incoming/{{function_name}}.{{function_name}}
+  
+  {{function_name}}LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join ['', ['/aws/lambda/', !Select [6, !Split [':', !GetAtt {{function_name}}.Arn]]]]
+      RetentionInDays: 90
+    #DeletionPolicy: Retain
+
+  #{{function_name}}LogGroupFilter:
+  #  Type: AWS::Logs::SubscriptionFilter
+  #  Condition: prodEnvironment
+  #  Properties:
+  #    LogGroupName: !Join ['', [/aws/lambda/, !Select [6, !Split [':', !GetAtt {{function_name}}.Arn]]]]
+  #    FilterPattern: "?ERROR"
+  #    DestinationArn: ""
+  
+  {{function_name}}EBRule:
+    Type: AWS::Events::Rule
+    Condition: prodEnvironment
+    Properties:
+      Name: !Sub "${TargetEnvironment}-${projectSlug}-{{function_name}}-EBRule"
+      ScheduleExpression: cron(0 * * * ? *) #every hour
+      #ScheduleExpression: cron(0/5 * * * ? *) #every 5 minutes
+      #ScheduleExpression: cron(0 0 * * ? *) #every day at midnight
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt {{function_name}}.Arn
+          Id: !Sub "${projectSlug}-{{function_name}}-Id"
+  
+  {{function_name}}EBPermission:
+    Type: AWS::Lambda::Permission
+    Condition: prodEnvironment
+    Properties:
+      FunctionName: !GetAtt {{function_name}}.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt {{function_name}}EBRule.Arn
+  

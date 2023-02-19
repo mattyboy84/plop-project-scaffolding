@@ -1,0 +1,6 @@
+
+      VpcConfig:
+        SubnetIds:
+          - !Ref privateSubnetA
+        SecurityGroupIds:
+          - !Ref vpcSecurityGroup
