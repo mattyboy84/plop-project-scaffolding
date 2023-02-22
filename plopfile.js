@@ -1,21 +1,26 @@
-/*
-    camelCase: changeFormatToThis
-    snakeCase: change_format_to_this
-    dashCase/kebabCase: change-format-to-this
-    dotCase: change.format.to.this
-    pathCase: change/format/to/this
-    properCase/pascalCase: ChangeFormatToThis
-    lowerCase: change format to this
-    sentenceCase: Change format to this,
-    constantCase: CHANGE_FORMAT_TO_THIS
-    titleCase: Change Format To This
-*/
+const { exec } = require('node:child_process');
+
+const { base_path } = require('./config.json');
 
 const config = (plop) => {
   plop.setGenerator('test', {
     description: 'test generator',
     async prompts(inquirer) {
       const allAnswers = {};
+      //
+      if (base_path === '') {
+        const project_path = await inquirer.prompt(
+          {
+            type: 'input',
+            name: 'project_path',
+            message: 'enter the project_path',
+            default: 'C:/repos/',
+          },
+        );
+        Object.assign(allAnswers, project_path);
+      } else {
+        console.log(`project will be created in: ${base_path}`);
+      }
       //
       const project_slug = await inquirer.prompt(
         {
@@ -97,19 +102,20 @@ const config = (plop) => {
       return allAnswers;
     },
     actions: (data) => {
+      const actions = [];
       console.log(data);
       const {
+        project_path,
         project_slug,
         selectedOptions,
         outgoingOptions,
         incomingOptions,
       } = data;
       //
-      const actions = [];
       actions.push(// template.yaml
         {
           type: 'add',
-          path: '{{project_slug}}/template.yaml',
+          path: '{{project_path}}{{project_slug}}/template.yaml',
           templateFile: 'templates/template.yaml/template.yaml',
         },
       );
@@ -118,7 +124,7 @@ const config = (plop) => {
         actions.push(
           {
             type: 'append',
-            path: '{{project_slug}}/template.yaml',
+            path: '{{project_path}}{{project_slug}}/template.yaml',
             pattern: '',
             templateFile: 'templates/template.yaml/outgoing-function-template.yaml',
             data: { function_name: outgoingOptions.name },
@@ -128,7 +134,7 @@ const config = (plop) => {
           actions.push(
             {
               type: 'modify',
-              path: '{{project_slug}}/template.yaml',
+              path: '{{project_path}}{{project_slug}}/template.yaml',
               pattern: /\s*VpcConfig:/,
               templateFile: 'templates/template.yaml/outgoing-function-vpc-template.yaml',
             },
@@ -137,7 +143,7 @@ const config = (plop) => {
           actions.push(
             {
               type: 'modify',
-              path: '{{project_slug}}/template.yaml',
+              path: '{{project_path}}{{project_slug}}/template.yaml',
               pattern: /\s*VpcConfig:/,
               template: '',
             },
@@ -146,7 +152,7 @@ const config = (plop) => {
         actions.push(
           {
             type: 'add',
-            path: '{{project_slug}}/src/outgoing/{{outgoingOptions.name}}.js',
+            path: '{{project_path}}{{project_slug}}/src/outgoing/{{outgoingOptions.name}}.js',
             templateFile: 'templates/src/outgoing/handler.js',
             data: { function_name: outgoingOptions.name },
           },
@@ -159,7 +165,7 @@ const config = (plop) => {
           actions.push(
             {
               type: 'append',
-              path: '{{project_slug}}/template.yaml',
+              path: '{{project_path}}{{project_slug}}/template.yaml',
               pattern: '',
               templateFile: 'templates/template.yaml/incoming-function-template.yaml',
               data: { function_name },
@@ -169,7 +175,7 @@ const config = (plop) => {
           actions.push(
             {
               type: 'add',
-              path: '{{project_slug}}/src/incoming/{{function_name}}.js',
+              path: '{{project_path}}{{project_slug}}/src/incoming/{{function_name}}.js',
               templateFile: 'templates/src/incoming/handler.js',
               data: { function_name },
             },
@@ -180,7 +186,7 @@ const config = (plop) => {
       actions.push(//.gitlab-ci.yml
         {
           type: 'add',
-          path: '{{project_slug}}/.gitlab-ci.yml',
+          path: '{{project_path}}{{project_slug}}/.gitlab-ci.yml',
           templateFile: 'templates/.gitlab-ci.yml',
         },
       );
@@ -188,7 +194,7 @@ const config = (plop) => {
       actions.push(//.vscode
         {
           type: 'add',
-          path: '{{project_slug}}/.vscode/settings.json',
+          path: '{{project_path}}{{project_slug}}/.vscode/settings.json',
           templateFile: 'templates/.vscode/settings.json',
         },
       );
@@ -196,7 +202,7 @@ const config = (plop) => {
       actions.push(//package.json
         {
           type: 'add',
-          path: '{{project_slug}}/package.json',
+          path: '{{project_path}}{{project_slug}}/package.json',
           templateFile: 'templates/package.json',
         },
       );
@@ -204,7 +210,7 @@ const config = (plop) => {
       actions.push(//.gitignore
         {
           type: 'add',
-          path: '{{project_slug}}/.gitignore',
+          path: '{{project_path}}{{project_slug}}/.gitignore',
           templateFile: 'templates/.gitignore',
         },
       );
@@ -212,7 +218,7 @@ const config = (plop) => {
       actions.push(//README.md
         {
           type: 'add',
-          path: '{{project_slug}}/README.md',
+          path: '{{project_path}}{{project_slug}}/README.md',
           templateFile: 'templates/README.md',
         },
       );
@@ -220,12 +226,33 @@ const config = (plop) => {
       actions.push(//.eslintrc.json
         {
           type: 'add',
-          path: '{{project_slug}}/.eslintrc.json',
+          path: '{{project_path}}{{project_slug}}/.eslintrc.json',
           templateFile: 'templates/.eslintrc.json',
+        },
+      );
+      //
+      actions.push(//create .git
+        {
+          type: 'git-init',
+          path: '{{project_path}}{{project_slug}}/.eslintrc.json',
+          templateFile: 'templates/.eslintrc.json',
+          data: { project_slug, project_path },
         },
       );
       return actions;
     },
+  });
+  //
+  plop.setActionType('git-init', (answers, actionConfig) => {
+    // Define the function that will be executed when the action is triggered
+    console.log(answers);
+    console.log(actionConfig);
+    const { data: { project_slug, project_path } } = actionConfig;
+    if (project_path === '' || project_path === ' ' || project_path === undefined) {
+      exec(`cd ${project_slug} && git init && git switch -c dev`);
+    } else {
+      exec(`cd ${project_path}${project_slug} && git init && git switch -c dev`);
+    }
   });
 };
 
